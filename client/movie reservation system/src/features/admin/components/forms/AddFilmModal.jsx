@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ModalShell } from './ModalShell'
+import { createMovie } from '../../api/adminApi'
 
 export function AddFilmModal({ onClose, onFilmAdded }) {
   const [title, setTitle] = useState('')
@@ -12,16 +13,33 @@ export function AddFilmModal({ onClose, onFilmAdded }) {
   const [description, setDescription] = useState('')
   const [posterUrl, setPosterUrl] = useState('')
 
-  function submitFilm(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
 
-    const newFilm = { title, genre, rating, duration, year, director, cast, description, posterUrl }
-    onFilmAdded(newFilm)
+    const movieData = {
+      title,
+      genre,
+      duration: Number(duration),
+      year: Number(year),
+      rating,
+      description,
+      director,
+      cast: cast.split(',').map((actor) => actor.trim()),
+      poster: posterUrl,
+    }
+
+    try {
+      await createMovie(movieData)
+      alert('Movie created successfully')
+      onFilmAdded(movieData)
+    } catch {
+      alert('Could not create movie. Please try again.')
+    }
   }
 
   return (
     <ModalShell title="Add Film" onClose={onClose}>
-      <form onSubmit={submitFilm}>
+      <form onSubmit={handleSubmit}>
         <label className="mb-5 block"><span className="mb-2 block text-sm uppercase tracking-[0.12em] text-[#9492ba]">Title</span><input value={title} onChange={(event) => setTitle(event.target.value)} required placeholder="e.g. Neon Frontier" className="h-16 w-full rounded-xl border border-[#2a2b42] bg-[#0f0f18] px-5 outline-none placeholder:text-[#6e6d7f] focus:border-[#d69b22]" /></label>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2"><label><span className="mb-2 block text-sm uppercase tracking-[0.12em] text-[#9492ba]">Genre</span><input value={genre} onChange={(event) => setGenre(event.target.value)} className="h-16 w-full rounded-xl border border-[#2a2b42] bg-[#0f0f18] px-5 outline-none focus:border-[#d69b22]" /></label><label><span className="mb-2 block text-sm uppercase tracking-[0.12em] text-[#9492ba]">Rating</span><input value={rating} onChange={(event) => setRating(event.target.value)} className="h-16 w-full rounded-xl border border-[#2a2b42] bg-[#0f0f18] px-5 outline-none focus:border-[#d69b22]" /></label><label><span className="mb-2 block text-sm uppercase tracking-[0.12em] text-[#9492ba]">Duration (min)</span><input value={duration} onChange={(event) => setDuration(event.target.value)} type="number" className="h-16 w-full rounded-xl border border-[#2a2b42] bg-[#0f0f18] px-5 outline-none focus:border-[#d69b22]" /></label><label><span className="mb-2 block text-sm uppercase tracking-[0.12em] text-[#9492ba]">Year</span><input value={year} onChange={(event) => setYear(event.target.value)} type="number" className="h-16 w-full rounded-xl border border-[#2a2b42] bg-[#0f0f18] px-5 outline-none focus:border-[#d69b22]" /></label></div>
         <label className="mt-5 block"><span className="mb-2 block text-sm uppercase tracking-[0.12em] text-[#9492ba]">Director</span><input value={director} onChange={(event) => setDirector(event.target.value)} placeholder="Director name" className="h-16 w-full rounded-xl border border-[#2a2b42] bg-[#0f0f18] px-5 outline-none placeholder:text-[#6e6d7f] focus:border-[#d69b22]" /></label>

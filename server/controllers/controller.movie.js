@@ -4,6 +4,7 @@ const Movie=require("../models/movie.model.js");
 // CREATE MOVIE
 const createMovie = async (req, res) => {
     try {
+        console.log(req.body)
 
         const {
             title,

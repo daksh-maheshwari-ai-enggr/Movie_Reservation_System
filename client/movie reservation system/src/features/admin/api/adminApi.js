@@ -1,8 +1,7 @@
 import apiClient from '../../../services/apiClient'
 
-// These functions are ready to use after you create matching Express routes.
-export async function createFilm(filmData) {
-  const response = await apiClient.post('/films', filmData)
+export async function createMovie(movieData) {
+  const response = await apiClient.post('/movies', movieData)
   return response.data
 }
 

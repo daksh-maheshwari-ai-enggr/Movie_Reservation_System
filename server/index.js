@@ -3,9 +3,13 @@ const app=express();
 const connectDB=require('./config/db.js');
 const adminRoutes=require('./routes/admin.routes.js')
 const dotenv=require('dotenv');
+const cors=require('cors');
+
 dotenv.config();
 
 const port=process.env.PORT
+
+app.use(cors())
 
 app.use(express.json())
 
