@@ -1,8 +1,17 @@
-import { AdminPanel } from './features/admin/pages/AdminPanel'
+import { Routes, Route } from "react-router-dom";
+import { AdminPanel } from "./features/admin/pages/AdminPanel";
 
 function App() {
-  // Future routes can be placed here: <UserPanel />, <MoviesPage />, etc.
-  return <AdminPanel />
+  return (
+    <Routes>
+
+      {/* Your Admin Module */}
+      <Route path="/admin" element={<AdminPanel />} />
+
+      {/* Teammate's User Module */}
+
+    </Routes>
+  );
 }
 
-export default App
+export default App;
