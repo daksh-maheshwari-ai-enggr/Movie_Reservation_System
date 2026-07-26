@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getMovies } from '../api/adminApi.js'
+import { getMovies,deleteMovie,updateMovie } from '../api/adminApi.js'
 
 export function MoviesTable({ onAddFilm }) {
   const [movies, setMovies] = useState([])
@@ -12,6 +12,22 @@ export function MoviesTable({ onAddFilm }) {
       console.log('Error fetching movies:', error)
     }
   }
+
+  async function handleDelete(id) {
+  const confirmDelete = window.confirm('Are you sure you want to delete this movie?')
+
+  if (!confirmDelete) {
+    return
+  }
+
+  try {
+    await deleteMovie(id)
+    fetchMovies()
+  } catch (error) {
+    console.log(error)
+    alert('Could not delete movie')
+  }
+}
 
   useEffect(() => {
     fetchMovies()
@@ -91,7 +107,7 @@ export function MoviesTable({ onAddFilm }) {
                     Edit
                   </button>
 
-                  <button className="hover:text-[#e37979]">
+                  <button onClick={() => handleDelete(movie._id)} className="hover:text-[#e37979]">
                     Remove
                   </button>
 
