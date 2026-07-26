@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
-import { getMovies,deleteMovie,updateMovie } from '../api/adminApi.js'
+import { getMovies, deleteMovie } from '../api/adminApi.js'
+import { EditFilmModal } from './forms/EditFilmModal.jsx'
 
 export function MoviesTable({ onAddFilm }) {
   const [movies, setMovies] = useState([])
+  const [editingMovie, setEditingMovie] = useState(null)
 
   async function fetchMovies() {
     try {
@@ -14,20 +16,22 @@ export function MoviesTable({ onAddFilm }) {
   }
 
   async function handleDelete(id) {
-  const confirmDelete = window.confirm('Are you sure you want to delete this movie?')
+    const confirmDelete = window.confirm(
+      'Are you sure you want to delete this movie?'
+    )
 
-  if (!confirmDelete) {
-    return
-  }
+    if (!confirmDelete) {
+      return
+    }
 
-  try {
-    await deleteMovie(id)
-    fetchMovies()
-  } catch (error) {
-    console.log(error)
-    alert('Could not delete movie')
+    try {
+      await deleteMovie(id)
+      fetchMovies()
+    } catch (error) {
+      console.log(error)
+      alert('Could not delete movie')
+    }
   }
-}
 
   useEffect(() => {
     fetchMovies()
@@ -35,6 +39,7 @@ export function MoviesTable({ onAddFilm }) {
 
   return (
     <div>
+
       <div className="mb-7 flex items-center justify-between gap-4">
         <h2 className="text-2xl font-semibold">Films</h2>
 
@@ -47,6 +52,7 @@ export function MoviesTable({ onAddFilm }) {
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-[#292a42] bg-[#111119]">
+
         <table className="w-full min-w-[780px] border-collapse text-lg">
 
           <thead>
@@ -103,11 +109,17 @@ export function MoviesTable({ onAddFilm }) {
 
                 <td className="border-t border-[#232438] px-6 py-5 text-[#9997bd]">
 
-                  <button className="mr-5 hover:text-[#d69b22]">
+                  <button
+                    onClick={() => setEditingMovie(movie)}
+                    className="mr-5 hover:text-[#d69b22]"
+                  >
                     Edit
                   </button>
 
-                  <button onClick={() => handleDelete(movie._id)} className="hover:text-[#e37979]">
+                  <button
+                    onClick={() => handleDelete(movie._id)}
+                    className="hover:text-[#e37979]"
+                  >
                     Remove
                   </button>
 
@@ -118,7 +130,27 @@ export function MoviesTable({ onAddFilm }) {
           </tbody>
 
         </table>
+
       </div>
+
+
+      {/* Edit Movie Modal */}
+
+      {editingMovie && (
+        <EditFilmModal
+          movie={editingMovie}
+
+          onClose={() => {
+            setEditingMovie(null)
+          }}
+
+          onFilmUpdated={() => {
+            setEditingMovie(null)
+            fetchMovies()
+          }}
+        />
+      )}
+
     </div>
   )
 }
