@@ -1,5 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import { AdminPanel } from "./features/admin/pages/AdminPanel";
+import { userRoutes } from './features/user/routes'
+
 
 function App() {
   return (
@@ -9,7 +11,7 @@ function App() {
       <Route path="/admin" element={<AdminPanel />} />
 
       {/* Teammate's User Module */}
-
+      {userRoutes}
     </Routes>
   );
 }
