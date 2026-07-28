@@ -1,18 +1,20 @@
-const express = require('express');
+const express = require("express");
+
 const router = express.Router();
+
 const {
   getUserProfile,
   updateUserProfile,
   getUserBookings,
-} = require('../controllers/userController');
-const { protectMock } = require('../middleware/authMock');
+} = require("../controllers/userController");
 
-// Note: Using protectMock temporarily until Module 1 is ready
+const { protect } = require("../middleware/auth");
+
 router
-  .route('/profile')
-  .get(protectMock, getUserProfile)
-  .put(protectMock, updateUserProfile);
+  .route("/profile")
+  .get(protect, getUserProfile)
+  .put(protect, updateUserProfile);
 
-router.route('/bookings').get(protectMock, getUserBookings);
+router.route("/bookings").get(protect, getUserBookings);
 
 module.exports = router;

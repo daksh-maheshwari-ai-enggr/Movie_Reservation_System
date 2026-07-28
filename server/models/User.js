@@ -1,50 +1,71 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const userSchema = mongoose.Schema(
+const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true,
+      required: [true, "Name is required"],
+      trim: true,
     },
+
     email: {
       type: String,
-      required: true,
+      required: [true, "Email is required"],
       unique: true,
+      lowercase: true,
+      trim: true,
     },
+
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+      minlength: 6,
+      select: false,
+    },
+
     phone: {
       type: String,
-      default: '',
+      default: "",
     },
+
     address: {
       type: String,
-      default: '',
+      default: "",
     },
+
     role: {
       type: String,
-      enum: ['Member', 'Admin'],
-      default: 'Member',
+      enum: ["Member", "Administrator"],
+      default: "Member",
     },
+
     avatarUrl: {
       type: String,
-      default: '',
+      default: "",
     },
+
     joinedDate: {
       type: String,
-      default: () => new Date().toISOString().split('T')[0],
+      default: () => new Date().toISOString().split("T")[0],
     },
-    // We omit password field for now since it's Auth's responsibility
   },
   {
     timestamps: true,
   }
 );
 
-// We overwrite the toJSON method to rename _id to id to match frontend expectation
-userSchema.method('toJSON', function () {
-  const { __v, _id, ...object } = this.toObject();
-  object.id = _id.toString();
-  return object;
+userSchema.method("toJSON", function () {
+  const obj = this.toObject();
+
+  delete obj.password;
+  delete obj.__v;
+
+  obj.id = obj._id.toString();
+  delete obj._id;
+
+  return obj;
 });
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
+
 module.exports = User;

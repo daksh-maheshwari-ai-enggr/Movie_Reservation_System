@@ -1,0 +1,18 @@
+import apiClient from "../../services/apiClient";
+
+const login = async (credentials) => {
+  const response = await apiClient.post("/auth/login", credentials);
+  return response.data;
+};
+
+const register = async (userData) => {
+  const response = await apiClient.post("/auth/register", userData);
+  return response.data;
+};
+
+const authService = {
+  login,
+  register,
+};
+
+export default authService;

@@ -1,8 +1,37 @@
-import axios from 'axios'
+import axios from "axios";
 
-// Change this URL when your Express server is running somewhere else.
 const apiClient = axios.create({
-  baseURL: 'http://localhost:5000/api/admin',
-})
+  baseURL: "http://localhost:5000/api",
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
-export default apiClient
+// Automatically attach JWT token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Handle unauthorized responses
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+export default apiClient;
