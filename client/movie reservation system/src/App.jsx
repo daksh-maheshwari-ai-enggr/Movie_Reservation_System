@@ -18,7 +18,7 @@ function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/login-success" element={<LoginSuccess />} />
 
-      {/* Protected Admin Route */}
+      {/* Protected Admin */}
       <Route
         path="/admin"
         element={
@@ -27,6 +27,9 @@ function App() {
           </ProtectedRoute>
         }
       />
+
+      {/* User Module */}
+      {userRoutes}
     </Routes>
   );
 }

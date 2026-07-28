@@ -13,7 +13,7 @@ const LoginSuccess = () => {
       } else {
         navigate("/");
       }
-    }, 5000);
+    }, 4000);
 
     return () => clearTimeout(timer);
   }, [navigate, user]);

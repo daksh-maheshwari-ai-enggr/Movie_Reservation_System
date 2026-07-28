@@ -24,7 +24,7 @@ const registerUser = async (req, res) => {
     if (
       role &&
       role !== "Member" &&
-      role !== "Administrator"
+      role !== "Admin"
     ) {
       return res.status(400).json({
         success: false,
@@ -61,6 +61,8 @@ const registerUser = async (req, res) => {
       user: user.toJSON(),
     });
   } catch (error) {
+    console.error("Register Error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Registration failed.",
@@ -74,11 +76,17 @@ const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    console.log("\n========== LOGIN ATTEMPT ==========");
+    console.log("Email Entered:", email);
+
     const user = await User.findOne({
       email: email.toLowerCase(),
     }).select("+password");
 
+    console.log("User Found:", user);
+
     if (!user) {
+      console.log("Reason: User not found");
       return res.status(401).json({
         success: false,
         message: "Invalid email or password.",
@@ -87,20 +95,31 @@ const loginUser = async (req, res) => {
 
     const isMatch = await bcrypt.compare(password, user.password);
 
+    console.log("Password Match:", isMatch);
+    console.log("Database Role:", user.role);
+
     if (!isMatch) {
+      console.log("Reason: Password incorrect");
       return res.status(401).json({
         success: false,
         message: "Invalid email or password.",
       });
     }
 
+    const token = generateToken(user._id, user.role);
+
+    console.log("JWT Generated Successfully");
+    console.log("========== LOGIN SUCCESS ==========\n");
+
     return res.status(200).json({
       success: true,
       message: "Login successful.",
-      token: generateToken(user._id, user.role),
+      token,
       user: user.toJSON(),
     });
   } catch (error) {
+    console.error("Login Error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Login failed.",
