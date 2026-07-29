@@ -17,6 +17,7 @@ const SESSION_KEY = 'cinevault_demo_session'
  * don't need to change.
  */
 export function AuthProvider({ children }) {
+  console.log("✅ AuthProvider mounted");
   const [user, setUser] = useState(() => {
     try {
       const saved = sessionStorage.getItem(SESSION_KEY)

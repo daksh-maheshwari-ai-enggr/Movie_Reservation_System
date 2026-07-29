@@ -1,15 +1,14 @@
 import { Routes, Route } from "react-router-dom";
+import LandingPage from "./pages/LandingPage";
+import MovieDetails from "./pages/MovieDetails";
 import { AdminPanel } from "./features/admin/pages/AdminPanel";
 
 function App() {
   return (
     <Routes>
-
-      {/* Your Admin Module */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/movie/:id" element={<MovieDetails />} />
       <Route path="/admin" element={<AdminPanel />} />
-
-      {/* Teammate's User Module */}
-
     </Routes>
   );
 }

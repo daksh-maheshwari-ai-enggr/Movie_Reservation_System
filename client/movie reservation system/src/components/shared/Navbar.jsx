@@ -17,7 +17,7 @@ const navLinkClasses = ({ isActive }) =>
  */
 function Navbar() {
   const navigate = useNavigate()
-  const { user, isAuthenticated, logout } = useAuth()
+   const { user, isAuthenticated, logout } = useAuth()
 
   const handleSignOut = () => {
     logout()
