@@ -1,19 +1,25 @@
 import { useState } from 'react'
 import { ModalShell } from './ModalShell'
-import { createTheater } from '../../api/adminApi'
+import { updateTheater } from '../../api/adminApi'
 
-export function AddTheaterModal({ onClose, onTheaterAdded }) {
-  const [name, setName] = useState('')
-  const [rows, setRows] = useState('8')
-  const [seatsPerRow, setSeatsPerRow] = useState('12')
-  const [description, setDescription] = useState('')
+export function EditTheaterModal({
+  theater,
+  onClose,
+  onTheaterUpdated,
+}) {
+  const [name, setName] = useState(theater.name)
+  const [rows, setRows] = useState(theater.rows)
+  const [seatsPerRow, setSeatsPerRow] = useState(theater.seatsPerRow)
+  const [description, setDescription] = useState(
+    theater.description || ''
+  )
 
   const capacity = Number(rows || 0) * Number(seatsPerRow || 0)
 
-  async function submitTheater(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
 
-    const theaterData = {
+    const updatedData = {
       name,
       rows: Number(rows),
       seatsPerRow: Number(seatsPerRow),
@@ -21,22 +27,20 @@ export function AddTheaterModal({ onClose, onTheaterAdded }) {
     }
 
     try {
-      await createTheater(theaterData)
+      await updateTheater(theater._id, updatedData)
 
-      alert('Theater created successfully')
-
-      onTheaterAdded()
-      onClose()
+      onTheaterUpdated()
     } catch (error) {
-      console.log('Error creating theater:', error)
-      alert('Could not create theater')
+      console.log('Error updating theater:', error)
+      alert('Could not update theater')
     }
   }
 
   return (
-    <ModalShell title="Add Theater" onClose={onClose}>
-      <form onSubmit={submitTheater}>
+    <ModalShell title="Edit Theater" onClose={onClose}>
+      <form onSubmit={handleSubmit}>
 
+        {/* Theater Name */}
         <label className="block">
           <span className="mb-2 block text-sm uppercase tracking-[0.12em] text-[#9492ba]">
             Theater name
@@ -51,6 +55,7 @@ export function AddTheaterModal({ onClose, onTheaterAdded }) {
           />
         </label>
 
+        {/* Rows + Seats */}
         <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
 
           <label>
@@ -85,10 +90,12 @@ export function AddTheaterModal({ onClose, onTheaterAdded }) {
 
         </div>
 
+        {/* Capacity */}
         <p className="mt-5 text-[#a09fc3]">
           Total capacity: {capacity} seats
         </p>
 
+        {/* Description */}
         <label className="mt-5 block">
           <span className="mb-2 block text-sm uppercase tracking-[0.12em] text-[#9492ba]">
             Description
@@ -102,6 +109,7 @@ export function AddTheaterModal({ onClose, onTheaterAdded }) {
           />
         </label>
 
+        {/* Buttons */}
         <div className="mt-9 flex gap-4">
 
           <button
@@ -116,7 +124,7 @@ export function AddTheaterModal({ onClose, onTheaterAdded }) {
             type="submit"
             className="flex-1 rounded-xl bg-[#d69b22] px-5 py-4 text-lg font-semibold text-black hover:bg-[#ebae30]"
           >
-            Add Theater
+            Save Changes
           </button>
 
         </div>

@@ -30,7 +30,17 @@ export async function createTheater(theaterData) {
   return response.data
 }
 
-export async function createShowtime(showtimeData) {
-  const response = await apiClient.post('/showtimes', showtimeData)
+export async function getTheaters() {
+  const response = await apiClient.get('/theaters')
+  return response.data
+}
+
+export async function updateTheater(id, theaterData) {
+  const response = await apiClient.put(`/theaters/${id}`, theaterData)
+  return response.data
+}
+
+export async function deleteTheater(id) {
+  const response = await apiClient.delete(`/theaters/${id}`)
   return response.data
 }
