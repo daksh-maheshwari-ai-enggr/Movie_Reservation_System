@@ -44,3 +44,28 @@ export async function deleteTheater(id) {
   const response = await apiClient.delete(`/theaters/${id}`)
   return response.data
 }
+
+export async function createShowtime(showtimeData) {
+  const response = await apiClient.post('/showtimes', showtimeData)
+  return response.data
+}
+
+export async function getShowtimes() {
+  const response = await apiClient.get('/showtimes')
+  return response.data
+}
+
+export async function getShowtimeById(id) {
+  const response = await apiClient.get(`/showtimes/${id}`)
+  return response.data
+}
+
+export async function updateShowtime(id, showtimeData) {
+  const response = await apiClient.put(`/showtimes/${id}`, showtimeData)
+  return response.data
+}
+
+export async function deleteShowtime(id) {
+  const response = await apiClient.delete(`/showtimes/${id}`)
+  return response.data
+}
