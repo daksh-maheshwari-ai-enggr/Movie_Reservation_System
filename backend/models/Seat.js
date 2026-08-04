@@ -7,10 +7,7 @@ import mongoose from 'mongoose';
  */
 const seatSchema = new mongoose.Schema(
   {
-    /**
-     * Relational Bridge: Connects this seat to its physical Screen/Auditorium.
-     * Uses MongoDB ObjectId to reference the parent Screen document.
-     */
+    
     screen: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Screen',

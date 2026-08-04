@@ -1,87 +1,124 @@
-import { useState } from 'react';
-import { mockTheaterLayout } from '../../data/mockSeatData';
+import { useState, useEffect } from 'react';
 
 /**
  * @component SeatGrid
- * @description Renders an interactive 2D theater seat map.
- * Handles user seat selection, dynamic pricing calculation, and visual status indicators (Available, Selected, Booked).
+ * @description Renders an interactive 2D theater seat map color-coded by category.
  */
-export default function SeatGrid() {
-  // Local state to track the array of seats currently selected by the user
+export default function SeatGrid({ layout }) {
   const [selectedSeats, setSelectedSeats] = useState([]);
-  
-  // Data source (Would eventually be replaced by props or an API fetch)
-  const layout = mockTheaterLayout;
+  const [seatPrices, setSeatPrices] = useState({});
 
-  /**
-   * Toggles the selection state of a specific seat.
-   * Prevents interaction with already booked seats.
-   * 
-   * @param {Object} seat - The seat object clicked by the user.
-   */
+  useEffect(() => {
+    const loadPrices = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/seat-categories');
+        const data = await response.json();
+        
+        const priceMapping = {};
+        if (Array.isArray(data)) {
+          data.forEach(cat => {
+            priceMapping[cat.name] = cat.price;
+          });
+        }
+        setSeatPrices(priceMapping);
+      } catch (error) {
+        console.error('Error fetching seat prices:', error);
+      }
+    };
+
+    loadPrices();
+  }, []);
+
   const handleSeatClick = (seat) => {
-    // Guard Clause: Prevent interaction with booked seats
     if (seat.status === 'booked') return;
 
-    // Check if the seat exists in the current selection
     const isAlreadySelected = selectedSeats.some((s) => s.id === seat.id);
 
     if (isAlreadySelected) {
-      // Remove seat from selection
       setSelectedSeats(selectedSeats.filter((s) => s.id !== seat.id));
     } else {
-      // Append seat to selection
       setSelectedSeats([...selectedSeats, seat]);
     }
   };
 
-  // Derived State: Calculates total cost based on the number of selected seats
-  const totalPrice = selectedSeats.length * layout.ticketPrice;
+  const totalPrice = selectedSeats.reduce((total, seat) => {
+    const seatPrice = seatPrices[seat.category] || 0;
+    return total + seatPrice;
+  }, 0);
+
+  // Helper function to return visual styles based on Seat Category
+  const getCategoryStyles = (category) => {
+    switch (category) {
+      case 'Recliner':
+        return 'bg-purple-950/60 hover:bg-purple-900 border-purple-500/50 text-purple-200';
+      case 'Platinum':
+        return 'bg-cyan-950/60 hover:bg-cyan-900 border-cyan-500/50 text-cyan-200';
+      case 'Gold':
+        return 'bg-amber-950/60 hover:bg-amber-900 border-amber-500/50 text-amber-200';
+      case 'Silver':
+      default:
+        return 'bg-slate-800 hover:bg-slate-700 border-slate-600 text-slate-300';
+    }
+  };
+
+  if (!layout || !layout.rows) {
+    return <div className="text-white text-center mt-20">Loading layout...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-[#0B0F17] text-white p-6 flex flex-col items-center">
       
-      {/* ==========================================
-          1. Header Information
-          ========================================== */}
-      <div className="text-center mb-8">
+      {/* Header */}
+      <div className="text-center mb-6">
         <h1 className="text-3xl font-serif font-bold text-slate-100">Neon Frontier</h1>
         <p className="text-sm text-slate-400 mt-1">
-          {layout.theaterName} • Thu, Jul 23 • 2:30 PM •{' '}
-          <span className="text-amber-400 font-semibold">${layout.ticketPrice.toFixed(2)} / seat</span>
+          {layout.theaterName} • <span className="text-amber-400 font-semibold">Dynamic Category Pricing</span>
         </p>
       </div>
 
-      {/* ==========================================
-          2. Screen Directional Graphic
-          ========================================== */}
-      <div className="w-full max-w-2xl mb-12 flex flex-col items-center">
-        <div className="w-3/4 h-1.5 bg-gradient-to-r from-transparent via-amber-400 to-transparent rounded-full opacity-70 shadow-[0_8px_25px_rgba(245,158,11,0.6)]"></div>
-        <span className="text-xs tracking-widest text-slate-500 uppercase mt-3 font-semibold">Screen</span>
+      {/* Category Price Legend Bar */}
+      <div className="flex flex-wrap justify-center gap-4 text-xs mb-8 bg-[#111622] px-6 py-3 rounded-xl border border-slate-800 shadow-md">
+        <div className="flex items-center gap-2">
+          <div className="w-3.5 h-3.5 rounded bg-slate-800 border border-slate-600"></div>
+          <span className="text-slate-300 font-medium">Silver (${(seatPrices['Silver'] || 0).toFixed(2)})</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3.5 h-3.5 rounded bg-amber-950 border border-amber-500"></div>
+          <span className="text-amber-300 font-medium">Gold (${(seatPrices['Gold'] || 0).toFixed(2)})</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3.5 h-3.5 rounded bg-cyan-950 border border-cyan-500"></div>
+          <span className="text-cyan-300 font-medium">Platinum (${(seatPrices['Platinum'] || 0).toFixed(2)})</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3.5 h-3.5 rounded bg-purple-950 border border-purple-500"></div>
+          <span className="text-purple-300 font-medium">Recliner (${(seatPrices['Recliner'] || 0).toFixed(2)})</span>
+        </div>
       </div>
 
-      {/* ==========================================
-          3. Interactive Seat Map (2D Grid)
-          ========================================== */}
-      <div className="flex flex-col gap-3 mb-12" role="grid" aria-label="Seat Selection Grid">
+      {/* Screen Graphic */}
+      <div className="w-full max-w-2xl mb-10 flex flex-col items-center">
+        <div className="w-3/4 h-1.5 bg-gradient-to-r from-transparent via-amber-400 to-transparent rounded-full opacity-70 shadow-[0_8px_25px_rgba(245,158,11,0.6)]"></div>
+        <span className="text-xs tracking-widest text-slate-500 uppercase mt-3 font-semibold">Screen This Way</span>
+      </div>
+
+      {/* Seat Grid */}
+      <div className="flex flex-col gap-3 mb-10" role="grid">
         {layout.rows.map((row) => (
           <div key={row.rowLabel} className="flex items-center gap-4" role="row">
             
-            {/* Left Row Identifier */}
-            <span className="w-4 text-center text-xs font-bold text-slate-500" aria-hidden="true">
+            <span className="w-4 text-center text-xs font-bold text-slate-500">
               {row.rowLabel}
             </span>
 
-            {/* Row Seats */}
             <div className="flex gap-2">
               {row.seats.map((seat) => {
                 const isSelected = selectedSeats.some((s) => s.id === seat.id);
                 const isBooked = seat.status === 'booked';
+                const currentSeatPrice = seatPrices[seat.category] || 0;
 
-                // Base styling for an available seat
-                let seatStyles = 'bg-slate-800 hover:bg-slate-700 text-slate-400 cursor-pointer border border-slate-700/50';
+                let seatStyles = `border ${getCategoryStyles(seat.category)} cursor-pointer`;
 
-                // Apply conditional styling based on seat status
                 if (isBooked) {
                   seatStyles = 'bg-slate-900/60 text-slate-700 cursor-not-allowed border-transparent';
                 } else if (isSelected) {
@@ -93,10 +130,8 @@ export default function SeatGrid() {
                     key={seat.id}
                     disabled={isBooked}
                     onClick={() => handleSeatClick(seat)}
-                    title={`${seat.id} (${seat.category}) - $${layout.ticketPrice}`}
-                    aria-label={`Seat ${seat.id}, ${isBooked ? 'Booked' : isSelected ? 'Selected' : 'Available'}`}
-                    aria-pressed={isSelected}
-                    className={`w-8 h-8 rounded-md text-xs transition-all duration-150 flex items-center justify-center ${seatStyles}`}
+                    title={`${seat.id} [${seat.category}] - $${currentSeatPrice.toFixed(2)}`}
+                    className={`w-8 h-8 rounded-md text-xs transition-all duration-150 flex items-center justify-center font-semibold ${seatStyles}`}
                   >
                     {seat.seatNumber}
                   </button>
@@ -104,18 +139,15 @@ export default function SeatGrid() {
               })}
             </div>
 
-            {/* Right Row Identifier */}
-            <span className="w-4 text-center text-xs font-bold text-slate-500" aria-hidden="true">
+            <span className="w-4 text-center text-xs font-bold text-slate-500">
               {row.rowLabel}
             </span>
           </div>
         ))}
       </div>
 
-      {/* ==========================================
-          4. Status Legend
-          ========================================== */}
-      <div className="flex gap-6 text-xs text-slate-400 mb-12 bg-[#111622] px-6 py-3 rounded-full border border-slate-800">
+      {/* Status Legend */}
+      <div className="flex gap-6 text-xs text-slate-400 mb-10 bg-[#111622] px-6 py-2.5 rounded-full border border-slate-800">
         <div className="flex items-center gap-2">
           <div className="w-3.5 h-3.5 rounded bg-slate-800 border border-slate-700"></div>
           <span>Available</span>
@@ -130,14 +162,12 @@ export default function SeatGrid() {
         </div>
       </div>
 
-      {/* ==========================================
-          5. Floating Checkout Action Bar
-          ========================================== */}
+      {/* Summary Footer */}
       <div className="w-full max-w-2xl bg-[#111622] border border-slate-800 rounded-xl p-5 flex items-center justify-between shadow-2xl">
         <div>
           <p className="text-sm font-semibold text-amber-400">
             {selectedSeats.length > 0
-              ? `${selectedSeats.length} seats selected: ${selectedSeats.map((s) => s.id).join(', ')}`
+              ? `${selectedSeats.length} seats selected: ${selectedSeats.map((s) => `${s.id} (${s.category})`).join(', ')}`
               : 'No seats selected yet'}
           </p>
           <p className="text-xs text-slate-400 mt-1">

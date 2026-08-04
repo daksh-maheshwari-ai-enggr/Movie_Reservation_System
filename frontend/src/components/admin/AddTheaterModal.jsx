@@ -3,7 +3,7 @@ import { useState } from 'react';
 /**
  * @component AddTheaterModal
  * @description A modal form interface used by admins to create a new theater/screen.
- * Captures structural details and dynamically calculates seating capacity.
+ * Captures structural details and dynamically calculates seating capacity, then saves to MongoDB.
  * 
  * @param {Object} props
  * @param {boolean} props.isOpen - Controls the visibility of the modal in the DOM.
@@ -16,6 +16,7 @@ export default function AddTheaterModal({ isOpen, onClose, onAddTheater }) {
   const [rows, setRows] = useState(8);
   const [seatsPerRow, setSeatsPerRow] = useState(12);
   const [description, setDescription] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Early return: Prevent rendering if modal state is inactive
   if (!isOpen) return null;
@@ -24,13 +25,14 @@ export default function AddTheaterModal({ isOpen, onClose, onAddTheater }) {
   const totalCapacity = rows * seatsPerRow;
 
   /**
-   * Handles form submission, prevents default refresh, constructs the payload, 
-   * and lifts the state back up to the parent component.
+   * Handles form submission, sends data to the MongoDB backend, 
+   * and updates the UI on success.
    */
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault(); 
+    setIsSubmitting(true);
     
-    // Construct the payload matching the expected data structure
+    // Construct the payload matching the expected backend data structure
     const newTheater = {
       name,
       rows: Number(rows),
@@ -39,15 +41,44 @@ export default function AddTheaterModal({ isOpen, onClose, onAddTheater }) {
       description,
     };
     
-    onAddTheater(newTheater);
-    onClose(); 
+    try {
+      // Send the POST request to your Express server to save in MongoDB
+      const response = await fetch('http://localhost:5000/api/theaters/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newTheater),
+      });
+
+      if (response.ok) {
+        const savedTheater = await response.json();
+        
+        // Pass the successfully saved DB record back up to the parent component
+        onAddTheater(savedTheater); 
+        
+        // Reset form and close modal
+        setName('');
+        setRows(8);
+        setSeatsPerRow(12);
+        setDescription('');
+        onClose(); 
+      } else {
+        alert('Failed to save theater. Please check your backend connection.');
+      }
+    } catch (error) {
+      console.error('Error saving theater:', error);
+      alert('Network error while saving theater.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     /* Modal Backdrop Overlay */
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       
-      /* Main Modal Container */
+      {/* Main Modal Container */}
       <div className="bg-[#111622] border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl text-slate-100 animate-fadeIn">
         
         {/* Modal Header */}
@@ -140,15 +171,21 @@ export default function AddTheaterModal({ isOpen, onClose, onAddTheater }) {
             <button
               type="button"
               onClick={onClose}
+              disabled={isSubmitting}
               className="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 rounded-lg text-sm transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="w-1/2 bg-amber-500 hover:bg-amber-400 text-black font-bold py-2.5 rounded-lg text-sm transition-colors shadow-lg shadow-amber-500/20 cursor-pointer active:scale-95"
+              disabled={isSubmitting}
+              className={`w-1/2 font-bold py-2.5 rounded-lg text-sm transition-colors shadow-lg cursor-pointer ${
+                isSubmitting 
+                  ? 'bg-amber-600 text-slate-200 opacity-70' 
+                  : 'bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/20 active:scale-95'
+              }`}
             >
-              + Add Theater
+              {isSubmitting ? 'Saving...' : '+ Add Theater'}
             </button>
           </div>
         </form>
