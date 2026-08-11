@@ -1,10 +1,192 @@
-import express from 'express'; import bcrypt from 'bcrypt'; import jwt from 'jsonwebtoken'; import {User,Movie,Theater,Seat,Showtime,ShowtimeSeat,Booking} from './models.js'; import {auth,admin} from './middleware/auth.js'; import {holdSeats,confirmBooking,releaseExpired} from './services/seatService.js';
-const token=u=>jwt.sign({id:u._id,name:u.name,email:u.email,role:u.role},process.env.JWT_SECRET,{expiresIn:'7d'}); const crud=(Model)=>{const r=express.Router();r.get('/',async(req,res)=>res.json(await Model.find().sort({createdAt:-1})));r.post('/',auth,admin,async(req,res)=>res.status(201).json(await Model.create(req.body)));r.put('/:id',auth,admin,async(req,res)=>res.json(await Model.findByIdAndUpdate(req.params.id,req.body,{new:true})));r.delete('/:id',auth,admin,async(req,res)=>{await Model.findByIdAndDelete(req.params.id);res.status(204).end()});return r};
-export const api=express.Router();
-api.post('/auth/register',async(req,res)=>{try{const {name,email,password}=req.body;if(!name||!email||!password)return res.status(400).json({message:'Name, email and password required'});const u=await User.create({name,email,password:await bcrypt.hash(password,10)});res.status(201).json({token:token(u),user:{id:u._id,name:u.name,email:u.email,role:u.role}})}catch(e){res.status(400).json({message:'Email already registered'})}});
-api.post('/auth/login',async(req,res)=>{const u=await User.findOne({email:req.body.email?.toLowerCase()});if(!u||!await bcrypt.compare(req.body.password||'',u.password))return res.status(401).json({message:'Invalid email or password'});res.json({token:token(u),user:{id:u._id,name:u.name,email:u.email,role:u.role}})});
-api.get('/movies',async(req,res)=>{const q=req.query.q?{$or:[{title:{$regex:req.query.q,$options:'i'}},{director:{$regex:req.query.q,$options:'i'}}]}:{};if(req.query.genre)q.genre=req.query.genre;res.json(await Movie.find(q).sort({createdAt:-1}))}); api.use('/movies',crud(Movie)); api.use('/theaters',crud(Theater));
-api.post('/theaters/:id/seats',auth,admin,async(req,res)=>{const t=await Theater.findById(req.params.id);const seats=[];for(let r=0;r<t.rows;r++)for(let n=1;n<=t.seatsPerRow;n++)seats.push({theater:t._id,row:String.fromCharCode(65+r),number:n,label:`${String.fromCharCode(65+r)}${n}`});await Seat.deleteMany({theater:t._id});res.json(await Seat.insertMany(seats))});
-api.get('/showtimes',async(req,res)=>res.json(await Showtime.find(req.query.movie?{movie:req.query.movie}:{}).populate('movie theater').sort({startsAt:1})));api.post('/showtimes',auth,admin,async(req,res)=>{const st=await Showtime.create(req.body);const seats=await Seat.find({theater:st.theater});await ShowtimeSeat.insertMany(seats.map(s=>({showtime:st._id,seat:s._id,label:s.label,status:s.isBlocked?'BLOCKED':'AVAILABLE'})));res.status(201).json(st)});api.delete('/showtimes/:id',auth,admin,async(req,res)=>{await ShowtimeSeat.deleteMany({showtime:req.params.id});await Showtime.findByIdAndDelete(req.params.id);res.status(204).end()});
-api.get('/showtimes/:id/seats',async(req,res)=>{await releaseExpired(req.params.id);res.json(await ShowtimeSeat.find({showtime:req.params.id}).sort({label:1}))});api.post('/showtimes/:id/hold',auth,async(req,res)=>{try{const expiresAt=await holdSeats({showtimeId:req.params.id,labels:req.body.labels,userId:req.user.id});req.app.get('io').to(`showtime:${req.params.id}`).emit('seats:changed');res.json({expiresAt})}catch(e){res.status(409).json({message:e.message})}});api.post('/showtimes/:id/release',auth,async(req,res)=>{await ShowtimeSeat.updateMany({showtime:req.params.id,holdBy:req.user.id,status:'HELD'},{$set:{status:'AVAILABLE'},$unset:{holdBy:1,holdExpiresAt:1}});req.app.get('io').to(`showtime:${req.params.id}`).emit('seats:changed');res.status(204).end()});
-api.post('/bookings/confirm',auth,async(req,res)=>{try{const b=await confirmBooking({...req.body,userId:req.user.id});req.app.get('io').to(`showtime:${b.showtime}`).emit('seats:changed');res.status(201).json(await b.populate({path:'showtime',populate:{path:'movie theater'}}))}catch(e){res.status(409).json({message:e.message})}});api.get('/bookings/me',auth,async(req,res)=>res.json(await Booking.find({user:req.user.id}).populate({path:'showtime',populate:{path:'movie theater'}}).sort({createdAt:-1})));api.get('/admin/stats',auth,admin,async(req,res)=>{const [movies,theaters,bookings]=await Promise.all([Movie.countDocuments(),Theater.countDocuments(),Booking.find({status:'CONFIRMED'}).populate('user showtime')]);res.json({movies,theaters,confirmedBookings:bookings.length,revenue:bookings.reduce((n,b)=>n+b.total,0),bookings})});
+import express from "express";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import {
+  User,
+  Movie,
+  Theater,
+  Seat,
+  Showtime,
+  ShowtimeSeat,
+  Booking,
+} from "./models.js";
+import { auth, admin } from "./middleware/auth.js";
+import {
+  holdSeats,
+  confirmBooking,
+  releaseExpired,
+} from "./services/seatService.js";
+const token = (u) =>
+  jwt.sign(
+    { id: u._id, name: u.name, email: u.email, role: u.role },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" },
+  );
+const crud = (Model) => {
+  const r = express.Router();
+  r.get("/", async (req, res) =>
+    res.json(await Model.find().sort({ createdAt: -1 })),
+  );
+  r.post("/", auth, admin, async (req, res) =>
+    res.status(201).json(await Model.create(req.body)),
+  );
+  r.put("/:id", auth, admin, async (req, res) =>
+    res.json(
+      await Model.findByIdAndUpdate(req.params.id, req.body, { new: true }),
+    ),
+  );
+  r.delete("/:id", auth, admin, async (req, res) => {
+    await Model.findByIdAndDelete(req.params.id);
+    res.status(204).end();
+  });
+  return r;
+};
+export const api = express.Router();
+api.post("/auth/register", async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password)
+      return res
+        .status(400)
+        .json({ message: "Name, email and password required" });
+    const u = await User.create({
+      name,
+      email,
+      password: await bcrypt.hash(password, 10),
+    });
+    res
+      .status(201)
+      .json({
+        token: token(u),
+        user: { id: u._id, name: u.name, email: u.email, role: u.role },
+      });
+  } catch (e) {
+    res.status(400).json({ message: "Email already registered" });
+  }
+});
+api.post("/auth/login", async (req, res) => {
+  const u = await User.findOne({ email: req.body.email?.toLowerCase() });
+  if (!u || !(await bcrypt.compare(req.body.password || "", u.password)))
+    return res.status(401).json({ message: "Invalid email or password" });
+  res.json({
+    token: token(u),
+    user: { id: u._id, name: u.name, email: u.email, role: u.role },
+  });
+});
+api.get("/movies", async (req, res) => {
+  const q = req.query.q
+    ? {
+        $or: [
+          { title: { $regex: req.query.q, $options: "i" } },
+          { director: { $regex: req.query.q, $options: "i" } },
+        ],
+      }
+    : {};
+  if (req.query.genre) q.genre = req.query.genre;
+  res.json(await Movie.find(q).sort({ createdAt: -1 }));
+});
+api.use("/movies", crud(Movie));
+api.use("/theaters", crud(Theater));
+api.post("/theaters/:id/seats", auth, admin, async (req, res) => {
+  const t = await Theater.findById(req.params.id);
+  const seats = [];
+  for (let r = 0; r < t.rows; r++)
+    for (let n = 1; n <= t.seatsPerRow; n++)
+      seats.push({
+        theater: t._id,
+        row: String.fromCharCode(65 + r),
+        number: n,
+        label: `${String.fromCharCode(65 + r)}${n}`,
+      });
+  await Seat.deleteMany({ theater: t._id });
+  res.json(await Seat.insertMany(seats));
+});
+api.get("/showtimes", async (req, res) =>
+  res.json(
+    await Showtime.find(req.query.movie ? { movie: req.query.movie } : {})
+      .populate("movie theater")
+      .sort({ startsAt: 1 }),
+  ),
+);
+api.post("/showtimes", auth, admin, async (req, res) => {
+  const st = await Showtime.create(req.body);
+  const seats = await Seat.find({ theater: st.theater });
+  await ShowtimeSeat.insertMany(
+    seats.map((s) => ({
+      showtime: st._id,
+      seat: s._id,
+      label: s.label,
+      status: s.isBlocked ? "BLOCKED" : "AVAILABLE",
+    })),
+  );
+  res.status(201).json(st);
+});
+api.delete("/showtimes/:id", auth, admin, async (req, res) => {
+  await ShowtimeSeat.deleteMany({ showtime: req.params.id });
+  await Showtime.findByIdAndDelete(req.params.id);
+  res.status(204).end();
+});
+api.get("/showtimes/:id/seats", async (req, res) => {
+  await releaseExpired(req.params.id);
+  res.json(
+    await ShowtimeSeat.find({ showtime: req.params.id }).sort({ label: 1 }),
+  );
+});
+api.post("/showtimes/:id/hold", auth, async (req, res) => {
+  try {
+    const expiresAt = await holdSeats({
+      showtimeId: req.params.id,
+      labels: req.body.labels,
+      userId: req.user.id,
+    });
+    req.app.get("io").to(`showtime:${req.params.id}`).emit("seats:changed");
+    res.json({ expiresAt });
+  } catch (e) {
+    res.status(409).json({ message: e.message });
+  }
+});
+api.post("/showtimes/:id/release", auth, async (req, res) => {
+  await ShowtimeSeat.updateMany(
+    { showtime: req.params.id, holdBy: req.user.id, status: "HELD" },
+    { $set: { status: "AVAILABLE" }, $unset: { holdBy: 1, holdExpiresAt: 1 } },
+  );
+  req.app.get("io").to(`showtime:${req.params.id}`).emit("seats:changed");
+  res.status(204).end();
+});
+api.post("/bookings/confirm", auth, async (req, res) => {
+  try {
+    const b = await confirmBooking({ ...req.body, userId: req.user.id });
+    req.app.get("io").to(`showtime:${b.showtime}`).emit("seats:changed");
+    res
+      .status(201)
+      .json(
+        await b.populate({
+          path: "showtime",
+          populate: { path: "movie theater" },
+        }),
+      );
+  } catch (e) {
+    res.status(409).json({ message: e.message });
+  }
+});
+api.get("/bookings/me", auth, async (req, res) =>
+  res.json(
+    await Booking.find({ user: req.user.id })
+      .populate({ path: "showtime", populate: { path: "movie theater" } })
+      .sort({ createdAt: -1 }),
+  ),
+);
+api.get("/admin/stats", auth, admin, async (req, res) => {
+  const [movies, theaters, bookings] = await Promise.all([
+    Movie.countDocuments(),
+    Theater.countDocuments(),
+    Booking.find({ status: "CONFIRMED" }).populate("user showtime"),
+  ]);
+  res.json({
+    movies,
+    theaters,
+    confirmedBookings: bookings.length,
+    revenue: bookings.reduce((n, b) => n + b.total, 0),
+    bookings,
+  });
+});
